@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 type wrapWriter struct {
@@ -56,6 +58,7 @@ func Gzip(handler http.Handler) http.Handler {
 		gzw := &wrapWriter{gzipResponseWriter{Writer: gz, ResponseWriter: w}, http.StatusOK}
 		defer gzw.Close(gz)
 
+		logrus.Infof("jianghang enter gzip middleware, use gzip writer")
 		// Content encoding will be set once Write or WriteHeader is called, to avoid gzipping empty messages
 		handler.ServeHTTP(gzw, r)
 	})

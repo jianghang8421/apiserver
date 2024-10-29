@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/rancher/apiserver/pkg/types"
+	"github.com/sirupsen/logrus"
 )
 
 type WatchSession struct {
@@ -34,6 +35,7 @@ func (s *WatchSession) stop(sub Subscribe, resp chan<- types.APIEvent) {
 			Selector:     sub.Selector,
 		}
 	}
+	logrus.Infof("jianghang WatchSession stream stop %s", sub.ResourceType)
 	delete(s.watchers, sub.key())
 }
 
@@ -71,6 +73,7 @@ func (s *WatchSession) stream(ctx context.Context, sub Subscribe, result chan<- 
 	apiOp := s.apiOp.Clone().WithContext(ctx)
 	apiOp.Namespace = sub.Namespace
 	apiOp.Schemas = schemas
+	logrus.Infof("jianghang WatchSession stream watch %s", sub.ResourceType)
 	c, err := schema.Store.Watch(apiOp, schema, types.WatchRequest{
 		Revision: sub.ResourceVersion,
 		ID:       sub.ID,

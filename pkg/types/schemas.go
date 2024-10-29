@@ -105,6 +105,7 @@ func (a *APISchemas) addToIndex(schema *APISchema) {
 }
 
 func (a *APISchemas) AddSchema(schema APISchema) error {
+	logrus.Infof("jianghang APISchemas AddSchema: %s", schema.ID)
 	if err := a.InternalSchemas.AddSchema(*schema.Schema); err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/rancher/apiserver/pkg/types"
+	"github.com/sirupsen/logrus"
 )
 
 type WatchSession struct {
@@ -22,10 +23,12 @@ type WatchSession struct {
 }
 
 func (s *WatchSession) stop(sub Subscribe, resp chan<- types.APIEvent) {
+	logrus.Infof("jianghang WatchSession %s %s stop ", sub.ResourceType, sub.ID)
 	s.Lock()
 	defer s.Unlock()
 	if cancel, ok := s.watchers[sub.key()]; ok {
 		cancel()
+		logrus.Infof("jianghang WatchSession stop cancel")
 		resp <- types.APIEvent{
 			Name:         "resource.stop",
 			ResourceType: sub.ResourceType,
@@ -35,9 +38,11 @@ func (s *WatchSession) stop(sub Subscribe, resp chan<- types.APIEvent) {
 		}
 	}
 	delete(s.watchers, sub.key())
+	logrus.Infof("jianghang WatchSession stop: %s %s", sub.ResourceType, sub.ID)
 }
 
 func (s *WatchSession) add(sub Subscribe, resp chan<- types.APIEvent) {
+	logrus.Infof("jianghang WatchSession %s %s add ", sub.ResourceType, sub.ID)
 	s.Lock()
 	defer s.Unlock()
 
@@ -50,12 +55,15 @@ func (s *WatchSession) add(sub Subscribe, resp chan<- types.APIEvent) {
 		defer s.stop(sub, resp)
 
 		if err := s.stream(ctx, sub, resp); err != nil {
+			logrus.Infof("jianghang WatchSession add return error: %v", err)
 			sendErr(resp, err, sub)
 		}
+		logrus.Infof("jianghang WatchSession add after stream")
 	}()
 }
 
 func (s *WatchSession) stream(ctx context.Context, sub Subscribe, result chan<- types.APIEvent) error {
+	logrus.Infof("jianghang WatchSession %s %s stream ", sub.ResourceType, sub.ID)
 	schemas := s.getter(s.apiOp)
 	schema := schemas.LookupSchema(sub.ResourceType)
 	if schema == nil {
@@ -71,6 +79,7 @@ func (s *WatchSession) stream(ctx context.Context, sub Subscribe, result chan<- 
 	apiOp := s.apiOp.Clone().WithContext(ctx)
 	apiOp.Namespace = sub.Namespace
 	apiOp.Schemas = schemas
+	logrus.Infof("jianghang stream watch schema: %v", schema.ID)
 	c, err := schema.Store.Watch(apiOp, schema, types.WatchRequest{
 		Revision: sub.ResourceVersion,
 		ID:       sub.ID,
@@ -89,6 +98,7 @@ func (s *WatchSession) stream(ctx context.Context, sub Subscribe, result chan<- 
 	}
 
 	if c == nil {
+		logrus.Infof("jianghang WatchSession stream apiOp.Context().Done()")
 		<-s.apiOp.Context().Done()
 	} else {
 		for event := range c {
@@ -107,6 +117,7 @@ func (s *WatchSession) stream(ctx context.Context, sub Subscribe, result chan<- 
 					return nil
 				}
 			} else {
+				logrus.Infof("jianghang WatchSession stream sendErr")
 				sendErr(result, event.Error, sub)
 			}
 		}
@@ -130,15 +141,19 @@ func (s *WatchSession) Watch(conn *websocket.Conn) <-chan types.APIEvent {
 	result := make(chan types.APIEvent, 100)
 	go func() {
 		defer close(result)
-
+		logrus.Infof("jianghang WatchSession Watch watch")
 		if err := s.watch(conn, result); err != nil {
+			logrus.Infof("jianghang WatchSession Watch sendErr")
 			sendErr(result, err, Subscribe{})
 		}
 	}()
+
+	logrus.Infof("jianghang WatchSession Watch return result")
 	return result
 }
 
 func (s *WatchSession) Close() {
+	logrus.Infof("jianghang WatchSession Close")
 	s.cancel()
 	s.wg.Wait()
 }
@@ -162,6 +177,7 @@ func (s *WatchSession) watch(conn *websocket.Conn, resp chan types.APIEvent) err
 
 		if sub.Stop {
 			s.stop(sub, resp)
+			logrus.Infof("jianghang WatchSession watch stop")
 		} else {
 			s.Lock()
 			_, ok := s.watchers[sub.key()]

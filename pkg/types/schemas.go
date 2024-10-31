@@ -1,6 +1,7 @@
 package types
 
 import (
+	"runtime"
 	"strings"
 
 	"github.com/rancher/wrangler/v3/pkg/schemas"
@@ -108,8 +109,14 @@ func (a *APISchemas) AddSchema(schema APISchema) error {
 	if err := a.InternalSchemas.AddSchema(*schema.Schema); err != nil {
 		return err
 	}
+	// var m1, m2 *runtime.MemStats
+	// runtime.ReadMemStats(m1)
 	schema.Schema = a.InternalSchemas.Schema(schema.ID)
 	a.Schemas[schema.ID] = &schema
+	// runtime.ReadMemStats(m2)
+	// memUsage(m1, m2)
+	logrus.Infof("jianghang apiserver APISchemas schema.ID: %s a.Schemas len: %v", schema.ID, len(a.Schemas))
+
 	a.addToIndex(&schema)
 	return nil
 }
@@ -124,4 +131,17 @@ func (a *APISchemas) LookupSchema(name string) *APISchema {
 		return a.Schemas[s.ID]
 	}
 	return nil
+}
+
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
+}
+
+func memUsage(m1, m2 *runtime.MemStats) {
+	alloc := m2.Alloc - m1.Alloc
+	ta := m2.TotalAlloc - m1.TotalAlloc
+	ha := m2.HeapAlloc - m1.HeapAlloc
+	logrus.Infof("jianghang Alloc: %v / %v MiB", alloc, bToMb(alloc))
+	logrus.Infof("jianghang TotalAlloc: %v / %v MiB", ta, bToMb(ta))
+	logrus.Infof("jianghang HeapAlloc: %v / %v MiB", ha, bToMb(ha))
 }
